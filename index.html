@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>細胞培養計算器</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="專業的細胞培養計算工具，支援時間、細胞數、種植數量計算">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="細胞計算器">
+    <meta name="msapplication-TileColor" content="#2563eb">
+    <meta name="msapplication-config" content="browserconfig.xml">
+    
+    <!-- PWA Icons -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16x16.png">
+    <link rel="mask-icon" href="icons/safari-pinned-tab.svg" color="#2563eb">
+    <link rel="shortcut icon" href="icons/favicon.ico">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .gradient-bg { 
+            background: linear-gradient(135deg, #e0f2fe 0%, #e8eaf6 100%); 
+        }
+        .card { 
+            background: rgba(255, 255, 255, 0.95); 
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        input[type="number"] { 
+            -webkit-appearance: none; 
+            -moz-appearance: textfield;
+            font-size: 16px; /* 防止iOS縮放 */
+            user-select: text; /* 允許輸入框選取文字 */
+        }
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        .btn-primary { 
+            background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+            transition: all 0.3s ease;
+            touch-action: manipulation;
+        }
+        .btn-primary:hover, .btn-primary:active { 
+            background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(37, 99, 235, 0.3);
+        }
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #6b7280;
+            transition: all 0.3s ease;
+            touch-action: manipulation;
+        }
+        .btn-secondary:hover, .btn-secondary:active {
+            background: #e5e7eb;
+            color: #374151;
+        }
+        .btn-active {
+            background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+            color: white;
+            transform: scale(1.02);
+        }
+        .result-card { 
+            background: linear-gradient(135deg, #f0fdf4 0%, #eff6ff 100%);
+            border: 1px solid #e5e7eb;
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .input-focus:focus {
+            outline: none;
+            ring: 2px;
+            ring-color: #3b82f6;
+            border-color: transparent;
+        }
+        /* 響應式設計 */
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            .grid-responsive { grid-template-columns: 1fr; gap: 1.5rem; }
+            .mode-buttons { flex-direction: column; gap: 0.5rem; }
+            .text-responsive { font-size: 1.25rem; }
+        }
+        @media (min-width: 769px) {
+            .grid-responsive { grid-template-columns: 1fr 1fr; gap: 2rem; }
+        }
+        /* 動畫效果 */
+        .bounce-in {
+            animation: bounceIn 0.6s ease-out;
+        }
+        @keyframes bounceIn {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.05); }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        /* PWA安裝提示 */
+        .install-prompt {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+            color: white;
+            padding: 1rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(37, 99, 235, 0.3);
+            z-index: 9999;
+            transform: translateY(-100px);
+            transition: transform 0.3s ease;
+        }
+        .install-prompt.show {
+            transform: translateY(0);
+        }
+        /* 防止雙擊縮放 */
+        * {
+            touch-action: manipulation;
+        }
+        /* 允許輸入框文字選取 */
+        input, textarea {
+            user-select: text;
+            -webkit-user-select: text;
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen">
+    <!-- PWA 安裝提示 -->
+    <div id="installPrompt" class="install-prompt">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center">
+                <span class="text-2xl mr-3">📱</span>
+                <div>
+                    <div class="font-bold">安裝應用程式</div>
+                    <div class="text-sm opacity-90">獲得更好的使用體驗</div>
+                </div>
+            </div>
+            <div class="flex space-x-2">
+                <button id="installBtn" class="bg-white text-blue-600 px-4 py-2 rounded-lg font-medium text-sm">
+                    安裝
+                </button>
+                <button id="dismissBtn" class="text-white opacity-75 hover:opacity-100 text-xl leading-none w-8 h-8">
+                    ×
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 離線提示 -->
+    <div id="offlineNotice" class="fixed bottom-4 left-4 right-4 bg-yellow-500 text-white p-3 rounded-lg shadow-lg z-50 hidden">
+        <div class="flex items-center">
+            <span class="mr-2">⚠️</span>
+            <span class="text-sm">目前離線使用，部分功能可能受限</span>
+        </div>
+    </div>
+
+    <div class="container max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+        <div class="card rounded-3xl shadow-2xl p-6 sm:p-8 lg:p-10">
+            <!-- 標題區域 -->
+            <div class="text-center mb-8 lg:mb-10">
+                <div class="flex items-center justify-center mb-6">
+                    <div class="w-12 h-12 lg:w-16 lg:h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mr-4 bounce-in">
+                        <span class="text-white text-2xl lg:text-3xl">🧬</span>
+                    </div>
+                    <h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+                        細胞培養計算器
+                    </h1>
+                </div>
+                <p class="text-gray-600 text-lg lg:text-xl">精確計算細胞培養的時間和數量</p>
+                <!-- 版本資訊 -->
+                <div class="mt-2 text-xs text-gray-400">
+                    PWA版本 v2.0 | 支援離線使用
+                </div>
+            </div>
+
+            <!-- 模式選擇 -->
+            <div class="flex justify-center mb-8 lg:mb-10">
+                <div class="bg-gray-100 rounded-2xl p-2 inline-flex flex-col sm:flex-row gap-2 mode-buttons">
+                    <button id="timeMode" class="mode-btn px-6 py-3 rounded-xl font-medium transition-all text-sm lg:text-base btn-active">
+                        <span class="mr-2">⏰</span>計算培養時間
+                    </button>
+                    <button id="finalCellMode" class="mode-btn px-6 py-3 rounded-xl font-medium transition-all text-sm lg:text-base btn-secondary">
+                        <span class="mr-2">📈</span>計算最終細胞數
+                    </button>
+                    <button id="seedingMode" class="mode-btn px-6 py-3 rounded-xl font-medium transition-all text-sm lg:text-base btn-secondary">
+                        <span class="mr-2">🌱</span>計算種植數量
+                    </button>
+                </div>
+            </div>
+
+            <!-- 主要內容區域 -->
+            <div class="grid grid-responsive">
+                <!-- 左側：輸入區域 -->
+                <div class="space-y-6 lg:space-y-8">
+                    <div class="bg-white rounded-2xl shadow-lg p-6 lg:p-8 border border-gray-100">
+                        <h2 id="inputTitle" class="text-xl lg:text-2xl font-bold text-gray-800 mb-6 lg:mb-8 border-b border-gray-200 pb-3">
+                            計算所需培養時間
+                        </h2>
+
+                        <!-- 種植細胞數輸入 -->
+                        <div id="seedingCellsDiv" class="mb-6">
+                            <label class="block text-sm lg:text-base font-semibold text-gray-700 mb-3">
+                                <span class="flex items-center">
+                                    <span class="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+                                    種植細胞數 (seeding)
+                                </span>
+                            </label>
+                            <input type="number" id="seedingCells" 
+                                   placeholder="例：2500000 或 2.5e6" 
+                                   class="w-full px-4 py-4 lg:py-5 border-2 border-gray-200 rounded-xl input-focus text-base lg:text-lg transition-all">
+                            <p class="text-xs lg:text-sm text-gray-500 mt-2">支援科學記號格式</p>
+                        </div>
+
+                        <!-- 目標細胞數輸入 -->
+                        <div id="targetCellsDiv" class="mb-6">
+                            <label class="block text-sm lg:text-base font-semibold text-gray-700 mb-3">
+                                <span class="flex items-center">
+                                    <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                                    目標細胞數
+                                </span>
+                            </label>
+                            <input type="number" id="targetCells" 
+                                   placeholder="例：8000000 或 8e6"
+                                   class="w-full px-4 py-4 lg:py-5 border-2 border-gray-200 rounded-xl input-focus text-base lg:text-lg transition-all">
+                            <p class="text-xs lg:text-sm text-gray-500 mt-2">期望達到的細胞數量</p>
+                        </div>
+
+                        <!-- 培養時間輸入 -->
+                        <div id="cultureTimeDiv" class="mb-6" style="display: none;">
+                            <label class="block text-sm lg:text-base font-semibold text-gray-700 mb-3">
+                                <span class="flex items-center">
+                                    <span class="w-2 h-2 bg-purple-500 rounded-full mr-2"></span>
+                                    培養時間 (小時)
+                                </span>
+                            </label>
+                            <input type="number" id="cultureTime" 
+                                   placeholder="例：48"
+                                   class="w-full px-4 py-4 lg:py-5 border-2 border-gray-200 rounded-xl input-focus text-base lg:text-lg transition-all">
+                            <p class="text-xs lg:text-sm text-gray-500 mt-2">實際培養的時間長度</p>
+                        </div>
+
+                        <!-- 目標最終細胞數輸入 -->
+                        <div id="targetCellsFinalDiv" class="mb-6" style="display: none;">
+                            <label class="block text-sm lg:text-base font-semibold text-gray-700 mb-3">
+                                <span class="flex items-center">
+                                    <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                                    目標最終細胞數
+                                </span>
+                            </label>
+                            <input type="number" id="targetCellsFinal" 
+                                   placeholder="例：8000000 或 8e6"
+                                   class="w-full px-4 py-4 lg:py-5 border-2 border-gray-200 rounded-xl input-focus text-base lg:text-lg transition-all">
+                            <p class="text-xs lg:text-sm text-gray-500 mt-2">希望最終達到的細胞數</p>
+                        </div>
+
+                        <!-- 預計培養時間輸入 -->
+                        <div id="cultureTimeSeedingDiv" class="mb-6" style="display: none;">
+                            <label class="block text-sm lg:text-base font-semibold text-gray-700 mb-3">
+                                <span class="flex items-center">
+                                    <span class="w-2 h-2 bg-purple-500 rounded-full mr-2"></span>
+                                    預計培養時間 (小時)
+                                </span>
+                            </label>
+                            <input type="number" id="cultureTimeSeeding" 
+                                   placeholder="例：48"
+                                   class="w-full px-4 py-4 lg:py-5 border-2 border-gray-200 rounded-xl input-focus text-base lg:text-lg transition-all">
+                            <p class="text-xs lg:text-sm text-gray-500 mt-2">計劃的培養時間長度</p>
+                        </div>
+
+                        <!-- Doubling Time輸入 -->
+                        <div class="mb-8">
+                            <label class="block text-sm lg:text-base font-semibold text-gray-700 mb-3">
+                                <span class="flex items-center">
+                                    <span class="w-2 h-2 bg-orange-500 rounded-full mr-2"></span>
+                                    Doubling Time (小時)
+                                </span>
+                            </label>
+                            <input type="number" id="doublingTime" 
+                                   placeholder="例：26.78"
+                                   class="w-full px-4 py-4 lg:py-5 border-2 border-gray-200 rounded-xl input-focus text-base lg:text-lg transition-all">
+                            <p class="text-xs lg:text-sm text-gray-500 mt-2">細胞數量翻倍所需時間</p>
+                        </div>
+
+                        <!-- 按鈕區域 -->
+                        <div class="flex flex-col sm:flex-row gap-4">
+                            <button id="calculateBtn" 
+                                    class="btn-primary text-white py-4 lg:py-5 px-8 lg:px-10 rounded-xl font-bold text-base lg:text-lg shadow-lg flex-1 flex items-center justify-center">
+                                <span class="mr-2">🧮</span>開始計算
+                            </button>
+                            <button id="resetBtn" 
+                                    class="px-8 py-4 lg:py-5 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all text-base lg:text-lg font-medium">
+                                <span class="mr-2">🔄</span>重置
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右側：結果區域 -->
+                <div class="space-y-6 lg:space-y-8">
+                    <div class="bg-white rounded-2xl shadow-lg p-6 lg:p-8 border border-gray-100">
+                        <h2 class="text-xl lg:text-2xl font-bold text-gray-800 mb-6 lg:mb-8 border-b border-gray-200 pb-3">
+                            計算結果
+                        </h2>
+                        
+                        <div id="resultArea" class="bg-gradient-to-br from-gray-50 to-blue-50 p-8 lg:p-12 rounded-2xl text-center min-h-[300px] flex items-center justify-center">
+                            <div class="text-gray-400">
+                                <div class="text-6xl lg:text-8xl mb-6 bounce-in">🧮</div>
+                                <p class="text-gray-600 text-base lg:text-lg">請輸入數值並點擊計算按鈕</p>
+                                <p class="text-gray-500 text-sm lg:text-base mt-2">支援科學記號格式輸入</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 公式說明 -->
+                    <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 lg:p-8 border border-blue-100">
+                        <h3 class="font-bold text-blue-800 mb-4 text-base lg:text-lg flex items-center">
+                            <span class="w-3 h-3 bg-blue-500 rounded-full mr-3"></span>
+                            計算公式
+                        </h3>
+                        <div class="space-y-4">
+                            <div class="bg-white rounded-xl p-4 lg:p-6 border border-blue-200">
+                                <div class="font-mono text-xl lg:text-2xl font-bold text-blue-700 mb-3">
+                                    N(t) = N₀ × 2^(t/td)
+                                </div>
+                                <div class="text-sm lg:text-base text-blue-600 space-y-1">
+                                    <div><strong>N(t)</strong>：最終細胞數</div>
+                                    <div><strong>N₀</strong>：初始細胞數</div>
+                                    <div><strong>t</strong>：培養時間</div>
+                                    <div><strong>td</strong>：doubling time</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentMode = 'time';
+        let deferredPrompt;
+
+        // PWA 安裝相關
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // 延遲顯示安裝提示
+            setTimeout(() => {
+                const installPrompt = document.getElementById('installPrompt');
+                installPrompt.classList.add('show');
+            }, 2000);
+        });
+
+        document.getElementById('installBtn').addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log(`用戶選擇：${outcome}`);
+                
+                if (outcome === 'accepted') {
+                    showAlert('安裝成功！可以在桌面找到應用程式', 'info');
+                }
+                
+                deferredPrompt = null;
+                document.getElementById('installPrompt').classList.remove('show');
+            }
+        });
+
+        document.getElementById('dismissBtn').addEventListener('click', () => {
+            document.getElementById('installPrompt').classList.remove('show');
+        });
+
+        // 檢測安裝狀態
+        window.addEventListener('appinstalled', () => {
+            showAlert('細胞計算器已成功安裝！', 'info');
+            document.getElementById('installPrompt').classList.remove('show');
+        });
+
+        // 註冊 Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', async () => {
+                try {
+                    const registration = await navigator.serviceWorker.register('sw.js');
+                    console.log('SW registered: ', registration);
+                    
+                    // 檢查更新
+                    registration.addEventListener('updatefound', () => {
+                        const newWorker = registration.installing;
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                showAlert('發現新版本，請重新載入頁面', 'info');
+                            }
+                        });
+                    });
+                } catch (registrationError) {
+                    console.log('SW registration failed: ', registrationError);
+                }
+            });
+        }
+
+        // 離線/線上狀態檢測
+        function updateOnlineStatus() {
+            const offlineNotice = document.getElementById('offlineNotice');
+            if (navigator.onLine) {
+                offlineNotice.classList.add('hidden');
+            } else {
+                offlineNotice.classList.remove('hidden');
+            }
+        }
+
+        window.addEventListener('online', updateOnlineStatus);
+        window.addEventListener('offline', updateOnlineStatus);
+
+        // 模式切換功能
+        document.getElementById('timeMode').addEventListener('click', () => {
+            currentMode = 'time';
+            updateMode();
+        });
+
+        document.getElementById('finalCellMode').addEventListener('click', () => {
+            currentMode = 'final';
+            updateMode();
+        });
+
+        document.getElementById('seedingMode').addEventListener('click', () => {
+            currentMode = 'seeding';
+            updateMode();
+        });
+
+        function updateMode() {
+            const timeModeBtn = document.getElementById('timeMode');
+            const finalCellModeBtn = document.getElementById('finalCellMode');
+            const seedingModeBtn = document.getElementById('seedingMode');
+            const inputTitle = document.getElementById('inputTitle');
+
+            // 重置所有按鈕樣式
+            [timeModeBtn, finalCellModeBtn, seedingModeBtn].forEach(btn => {
+                btn.className = 'mode-btn px-6 py-3 rounded-xl font-medium transition-all text-sm lg:text-base btn-secondary';
+            });
+
+            // 隱藏所有輸入框
+            document.getElementById('seedingCellsDiv').style.display = 'none';
+            document.getElementById('targetCellsDiv').style.display = 'none';
+            document.getElementById('cultureTimeDiv').style.display = 'none';
+            document.getElementById('targetCellsFinalDiv').style.display = 'none';
+            document.getElementById('cultureTimeSeedingDiv').style.display = 'none';
+
+            if (currentMode === 'time') {
+                timeModeBtn.className = 'mode-btn px-6 py-3 rounded-xl font-medium transition-all text-sm lg:text-base btn-active';
+                inputTitle.textContent = '計算所需培養時間';
+                document.getElementById('seedingCellsDiv').style.display = 'block';
+                document.getElementById('targetCellsDiv').style.display = 'block';
+            } else if (currentMode === 'final') {
+                finalCellModeBtn.className = 'mode-btn px-6 py-3 rounded-xl font-medium transition-all text-sm lg:text-base btn-active';
+                inputTitle.textContent = '計算最終細胞數量';
+                document.getElementById('seedingCellsDiv').style.display = 'block';
+                document.getElementById('cultureTimeDiv').style.display = 'block';
+            } else if (currentMode === 'seeding') {
+                seedingModeBtn.className = 'mode-btn px-6 py-3 rounded-xl font-medium transition-all text-sm lg:text-base btn-active';
+                inputTitle.textContent = '計算所需種植數量';
+                document.getElementById('targetCellsFinalDiv').style.display = 'block';
+                document.getElementById('cultureTimeSeedingDiv').style.display = 'block';
+            }
+            resetForm();
+        }
+
+        // 計算功能
+        document.getElementById('calculateBtn').addEventListener('click', calculate);
+
+        function calculate() {
+            const doublingTime = parseFloat(document.getElementById('doublingTime').value);
+
+            if (!doublingTime || doublingTime <= 0) {
+                showAlert('請填入有效的 Doubling Time (必須大於0)', 'error');
+                return;
+            }
+
+            try {
+                if (currentMode === 'time') {
+                    calculateTime(doublingTime);
+                } else if (currentMode === 'final') {
+                    calculateFinalCells(doublingTime);
+                } else if (currentMode === 'seeding') {
+                    calculateSeedingCells(doublingTime);
+                }
+            } catch (error) {
+                showAlert('計算錯誤：' + error.message, 'error');
+            }
+        }
+
+        function calculateTime(doublingTime) {
+            const seedingCells = parseFloat(document.getElementById('seedingCells').value);
+            const targetCells = parseFloat(document.getElementById('targetCells').value);
+            
+            if (!seedingCells || !targetCells) {
+                showAlert('請填入種植細胞數和目標細胞數', 'error');
+                return;
+            }
+
+            if (seedingCells <= 0 || targetCells <= 0) {
+                showAlert('細胞數必須大於0', 'error');
+                return;
+            }
+
+            if (seedingCells >= targetCells) {
+                showAlert('目標細胞數必須大於種植細胞數', 'error');
+                return;
+            }
+
+            const time = doublingTime * Math.log2(targetCells / seedingCells);
+            const days = Math.floor(time / 24);
+            const hours = time % 24;
+            const doublings = Math.log2(targetCells / seedingCells);
+
+            showTimeResult(time, days, hours, doublings);
+        }
+
+        function calculateFinalCells(doublingTime) {
+            const seedingCells = parseFloat(document.getElementById('seedingCells').value);
+            const cultureTime = parseFloat(document.getElementById('cultureTime').value);
+            
+            if (!seedingCells || !cultureTime) {
+                showAlert('請填入種植細胞數和培養時間', 'error');
+                return;
+            }
+
+            if (seedingCells <= 0 || cultureTime <= 0) {
+                showAlert('數值必須大於0', 'error');
+                return;
+            }
+
+            const finalCells = seedingCells * Math.pow(2, cultureTime / doublingTime);
+            const doublings = cultureTime / doublingTime;
+            const foldIncrease = finalCells / seedingCells;
+
+            showCellResult(finalCells, doublings, foldIncrease);
+        }
+
+        function calculateSeedingCells(doublingTime) {
+            const targetCellsFinal = parseFloat(document.getElementById('targetCellsFinal').value);
+            const cultureTimeSeeding = parseFloat(document.getElementById('cultureTimeSeeding').value);
+            
+            if (!targetCellsFinal || !cultureTimeSeeding) {
+                showAlert('請填入目標最終細胞數和預計培養時間', 'error');
+                return;
+            }
+
+            if (targetCellsFinal <= 0 || cultureTimeSeeding <= 0) {
+                showAlert('數值必須大於0', 'error');
+                return;
+            }
+
+            const seedingCells = targetCellsFinal / Math.pow(2, cultureTimeSeeding / doublingTime);
+            const doublings = cultureTimeSeeding / doublingTime;
+            const foldIncrease = targetCellsFinal / seedingCells;
+
+            showSeedingResult(seedingCells, doublings, foldIncrease, targetCellsFinal);
+        }
+
+        function showTimeResult(totalHours, days, hours, doublings) {
+            const resultArea = document.getElementById('resultArea');
+            resultArea.innerHTML = `
+                <div class="result-card p-6 lg:p-8 rounded-2xl">
+                    <div class="text-center space-y-6">
+                        <div class="bounce-in">
+                            <div class="text-4xl lg:text-5xl font-bold text-green-600 mb-3">
+                                ${days}天 ${hours.toFixed(1)}小時
+                            </div>
+                            <div class="text-gray-600 text-base lg:text-lg">
+                                總計：${totalHours.toFixed(2)} 小時
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 gap-4 mt-6">
+                            <div class="bg-white p-4 lg:p-6 rounded-xl shadow-sm border border-gray-100">
+                                <div class="text-sm lg:text-base text-gray-600 mb-2">細胞分裂次數</div>
+                                <div class="text-2xl lg:text-3xl font-bold text-blue-600">
+                                    ${doublings.toFixed(2)} 次
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-xs lg:text-sm text-gray-500 mt-4">
+                            ✨ 基於指數增長模型計算
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function showCellResult(finalCells, doublings, foldIncrease) {
+            const resultArea = document.getElementById('resultArea');
+            const formattedCells = finalCells.toExponential(2);
+            const readableCells = formatNumber(finalCells);
+            
+            resultArea.innerHTML = `
+                <div class="result-card p-6 lg:p-8 rounded-2xl">
+                    <div class="text-center space-y-6">
+                        <div class="bounce-in">
+                            <div class="text-2xl lg:text-3xl font-bold text-green-600 mb-3">
+                                ${formattedCells}
+                            </div>
+                            <div class="text-gray-600 text-base lg:text-lg">
+                                約 ${readableCells} 個細胞
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 mt-6">
+                            <div class="bg-white p-4 lg:p-6 rounded-xl shadow-sm border border-gray-100">
+                                <div class="text-sm lg:text-base text-gray-600 mb-2">分裂次數</div>
+                                <div class="text-xl lg:text-2xl font-bold text-blue-600">
+                                    ${doublings.toFixed(2)} 次
+                                </div>
+                            </div>
+                            <div class="bg-white p-4 lg:p-6 rounded-xl shadow-sm border border-gray-100">
+                                <div class="text-sm lg:text-base text-gray-600 mb-2">增長倍數</div>
+                                <div class="text-xl lg:text-2xl font-bold text-purple-600">
+                                    ${foldIncrease.toFixed(2)}x
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-xs lg:text-sm text-gray-500 mt-4">
+                            📊 精確計算結果
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function showSeedingResult(seedingCells, doublings, foldIncrease, targetCells) {
+            const resultArea = document.getElementById('resultArea');
+            const formattedSeeding = seedingCells.toExponential(2);
+            const readableSeeding = formatNumber(seedingCells);
+            const formattedTarget = formatNumber(targetCells);
+            
+            resultArea.innerHTML = `
+                <div class="result-card p-6 lg:p-8 rounded-2xl">
+                    <div class="text-center space-y-6">
+                        <div class="bounce-in">
+                            <div class="text-lg lg:text-xl text-gray-700 mb-2">需要種植</div>
+                            <div class="text-2xl lg:text-3xl font-bold text-green-600 mb-3">
+                                ${formattedSeeding}
+                            </div>
+                            <div class="text-gray-600 text-base lg:text-lg">
+                                約 ${readableSeeding} 個細胞
+                            </div>
+                            <div class="text-sm lg:text-base text-gray-500 mt-3">
+                                培養後將達到 ${formattedTarget} 個細胞
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 mt-6">
+                            <div class="bg-white p-4 lg:p-6 rounded-xl shadow-sm border border-gray-100">
+                                <div class="text-sm lg:text-base text-gray-600 mb-2">分裂次數</div>
+                                <div class="text-xl lg:text-2xl font-bold text-blue-600">
+                                    ${doublings.toFixed(2)} 次
+                                </div>
+                            </div>
+                            <div class="bg-white p-4 lg:p-6 rounded-xl shadow-sm border border-gray-100">
+                                <div class="text-sm lg:text-base text-gray-600 mb-2">增長倍數</div>
+                                <div class="text-xl lg:text-2xl font-bold text-purple-600">
+                                    ${foldIncrease.toFixed(2)}x
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-xs lg:text-sm text-gray-500 mt-4">
+                            🎯 反推計算結果
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function formatNumber(num) {
+            if (num >= 1e12) {
+                return (num / 1e12).toFixed(2) + 'T';
+            } else if (num >= 1e9) {
+                return (num / 1e9).toFixed(2) + 'B';
+            } else if (num >= 1e6) {
+                return (num / 1e6).toFixed(2) + 'M';
+            } else if (num >= 1e3) {
+                return (num / 1e3).toFixed(2) + 'K';
+            }
+            return Math.round(num).toLocaleString();
+        }
+
+        function showAlert(message, type = 'info') {
+            const alertDiv = document.createElement('div');
+            const bgColor = type === 'error' ? 'bg-red-100 border-red-500 text-red-700' : 'bg-blue-100 border-blue-500 text-blue-700';
+            
+            alertDiv.className = `fixed top-4 right-4 ${bgColor} border-l-4 p-4 rounded-lg shadow-lg z-50 max-w-sm bounce-in`;
+            alertDiv.innerHTML = `
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <span class="text-xl">${type === 'error' ? '⚠️' : 'ℹ️'}</span>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm font-medium">${message}</p>
+                    </div>
+                    <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-lg leading-none">×</button>
+                </div>
+            `;
+            
+            document.body.appendChild(alertDiv);
+            
+            // 3秒後自動消失
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 3000);
+        }
+
+        // 重置功能
+        document.getElementById('resetBtn').addEventListener('click', resetForm);
+
+        function resetForm() {
+            // 清空所有輸入框
+            document.getElementById('seedingCells').value = '';
+            document.getElementById('targetCells').value = '';
+            document.getElementById('cultureTime').value = '';
+            document.getElementById('doublingTime').value = '';
+            document.getElementById('targetCellsFinal').value = '';
+            document.getElementById('cultureTimeSeeding').value = '';
+            
+            // 重置結果顯示
+            const resultArea = document.getElementById('resultArea');
+            resultArea.innerHTML = `
+                <div class="bg-gradient-to-br from-gray-50 to-blue-50 p-8 lg:p-12 rounded-2xl text-center min-h-[300px] flex items-center justify-center">
+                    <div class="text-gray-400">
+                        <div class="text-6xl lg:text-8xl mb-6 bounce-in">🧮</div>
+                        <p class="text-gray-600 text-base lg:text-lg">請輸入數值並點擊計算按鈕</p>
+                        <p class="text-gray-500 text-sm lg:text-base mt-2">支援科學記號格式輸入</p>
+                    </div>
+                </div>
+            `;
+            
+            showAlert('已重置所有輸入', 'info');
+        }
+
+        // 鍵盤快捷鍵支援（修正版本）
+        document.addEventListener('keydown', (e) => {
+            // 檢查是否在輸入框中，如果是則不執行快捷鍵
+            const isInInput = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA';
+            
+            // Enter鍵計算（只在輸入框中生效）
+            if (e.key === 'Enter' && isInInput) {
+                e.preventDefault();
+                calculate();
+            }
+            
+            // 其他快捷鍵只在非輸入狀態下生效
+            if (!isInInput) {
+                // Escape鍵重置
+                if (e.key === 'Escape') {
+                    resetForm();
+                }
+                
+                // 數字鍵切換模式（只在非輸入狀態下）
+                if (e.key === '1') {
+                    currentMode = 'time';
+                    updateMode();
+                }
+                if (e.key === '2') {
+                    currentMode = 'final';
+                    updateMode();
+                }
+                if (e.key === '3') {
+                    currentMode = 'seeding';
+                    updateMode();
+                }
+                
+                // 問號鍵顯示快捷鍵
+                if (e.key === '?') {
+                    showShortcuts();
+                }
+            }
+        });
+
+        // 添加快捷鍵說明
+        function showShortcuts() {
+            showAlert('快捷鍵：輸入框內按Enter計算 | 非輸入時按1/2/3切換模式 | Esc重置', 'info');
+        }
+
+        // 輸入框增強功能
+        function addInputHelpers() {
+            const inputs = document.querySelectorAll('input[type="number"]');
+            inputs.forEach(input => {
+                input.addEventListener('focus', function() {
+                    this.style.borderColor = '#3b82f6';
+                    this.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                });
+
+                input.addEventListener('blur', function() {
+                    this.style.borderColor = '#d1d5db';
+                    this.style.boxShadow = 'none';
+                });
+            });
+        }
+
+        // 載入完成後初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            updateMode();
+            addInputHelpers();
+            updateOnlineStatus();
+            
+            // 顯示歡迎訊息
+            setTimeout(() => {
+                showAlert('歡迎使用細胞培養計算器 PWA 版！', 'info');
+            }, 1000);
+        });
+
+        // 在頁面底部添加快捷鍵提示
+        setTimeout(() => {
+            const shortcutTip = document.createElement('div');
+            shortcutTip.className = 'fixed bottom-4 left-4 bg-black bg-opacity-70 text-white text-xs px-3 py-2 rounded-lg z-40 cursor-pointer';
+            shortcutTip.innerHTML = '💡 按 ? 查看快捷鍵';
+            shortcutTip.onclick = showShortcuts;
+            document.body.appendChild(shortcutTip);
+        }, 5000);
+    </script>
+</body>
+</html>

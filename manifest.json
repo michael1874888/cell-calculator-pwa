@@ -1,0 +1,27 @@
+{
+  "name": "細胞培養計算器",
+  "short_name": "細胞計算器",
+  "description": "專業的細胞培養計算工具，支援培養時間、最終細胞數、種植數量計算",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "orientation": "portrait",
+  "scope": "/",
+  "lang": "zh-TW",
+  "categories": ["medical", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3845/3845731.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3845/3845731.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
