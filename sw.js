@@ -4,11 +4,9 @@ const DYNAMIC_CACHE_NAME = 'cell-calculator-dynamic-v2.0.0';
 
 // 需要快取的靜態資源
 const STATIC_FILES = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png',
+  './',
+  './index.html',
+  './manifest.json',
   'https://cdn.tailwindcss.com'
 ];
 
@@ -90,7 +88,7 @@ self.addEventListener('fetch', (event) => {
               
               // 如果是 HTML 請求且網路失敗，返回離線頁面
               if (request.headers.get('accept').includes('text/html')) {
-                return caches.match('/');
+                return caches.match('./');
               }
               
               // 其他請求返回錯誤
@@ -119,20 +117,20 @@ self.addEventListener('push', (event) => {
   
   const options = {
     body: event.data ? event.data.text() : '細胞培養計算器有新消息',
-    icon: '/icons/icon-192x192.png',
-    badge: '/icons/icon-72x72.png',
+    icon: 'https://cdn-icons-png.flaticon.com/512/3845/3845731.png',
+    badge: 'https://cdn-icons-png.flaticon.com/512/3845/3845731.png',
     tag: 'cell-calculator-notification',
     requireInteraction: true,
     actions: [
       {
         action: 'open',
         title: '打開應用',
-        icon: '/icons/icon-72x72.png'
+        icon: 'https://cdn-icons-png.flaticon.com/512/3845/3845731.png'
       },
       {
         action: 'close',
         title: '關閉',
-        icon: '/icons/icon-72x72.png'
+        icon: 'https://cdn-icons-png.flaticon.com/512/3845/3845731.png'
       }
     ]
   };
@@ -154,13 +152,13 @@ self.addEventListener('notificationclick', (event) => {
         .then((clientList) => {
           // 如果應用已經打開，就聚焦到該視窗
           for (const client of clientList) {
-            if (client.url === '/' && 'focus' in client) {
+            if (client.url.includes('cell-calculator') && 'focus' in client) {
               return client.focus();
             }
           }
           // 否則打開新視窗
           if (clients.openWindow) {
-            return clients.openWindow('/');
+            return clients.openWindow('./');
           }
         })
     );
